@@ -1,11 +1,18 @@
-/*-------------------------------------------------------------------------
- * Image Processing using C-Ansi
- *   Program: Processing of the image negative
- *-------------------------------------------------------------------------*/
+/*=============================================================
+*              UNIFAL = Universidade Federal de Alfenas.
+*               BACHARELADO EM CIENCIA DA COMPUTACAO.
+* Trabalho...: Contagem de feijoes
+* Professor..: Luiz Eduardo da Silva
+* Aluno......: Marcos Vyctor Fonseca Galupo
+* Data.......: 20/05/2024
+*=============================================================*/
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+#include <math.h>
+#include <limits.h>
 
 #if defined(_WIN32) || defined(__WIN64__) || defined(__CYGWIN__)
 #include "..\\utils\\imagelib.h"
@@ -13,19 +20,36 @@
 #include "../utils/imagelib.h"
 #endif
 
+#define INT_MAX __INT_MAX__
+#define min(a, b) ((a) < (b) ? (a) : (b))
+
+
+int min_of_3(int x, int y, int z) {
+    if (x < y && x < z) return x;
+    if (y < z) return y;
+
+    return z;
+}
+
+int min2(int a, int b) {
+    if (a < b){
+        return a;
+    }
+    return b;
+}
+
 image intensity(image In){
     float T[In->ml + 1];
-    float expo = 2;
+
     image Out = img_clone(In);
     for (int i = 0; i < In->ml + 1; i++)
-        T[i] = i < 170 ? 0 : 1;  // limiarização
+        T[i] = i < 150 ? 0 : 1;  // limiarização
 
     for (int i = 0; i < In->nr * In->nc; i++)
         Out->px[i] = T[In->px[i]];
     
     return Out;
 }
-
 
 image neg_pgm(image In)
 {
@@ -35,13 +59,22 @@ image neg_pgm(image In)
     return Out;
 }
 
-int find(int parent[], int i)
+/* find the parent of the group the element belongs to
+ * @param parent store the parent of a group
+ * @param e element 
+*/
+int find(int parent[], int e)
 {
-    while (parent[i] != i)
-        i = parent[i];
-    return i;
+    while (parent[e] != e)
+        e = parent[e];
+    return e;
 }
 
+/* join two components into a union structure
+* @param parent store the parent of a group
+* @param i parent to be joined
+* @param j parent to be joined
+*/
 void Union(int parent[], int i, int j)
 {
     int x = find(parent, i);
@@ -49,44 +82,101 @@ void Union(int parent[], int i, int j)
     parent[y] = x;
 }
 
+
+int countDifferentLabels(image In, int parent[]) {
+     int unique = 0;
+     int used[In->nc * In->nr];
+
+    for(int i = 0; i < In->nc * In->nr; i++)
+        used[i] = 0;
+
+    for (int i = 0; i < In->nc * In->nr; i++) {
+        int root = find(parent, In->px[i]);
+        if (used[root] == 0) { // not used
+            used[root] = true;
+            unique++;
+        }
+    }
+    return unique;
+}
+
+int distance(image In) {
+    int nr = In->nr;
+    int nc = In->nc;
+    int *px = In->px;
+    int max_distance = -1;
+
+    for (int i = 1; i < nr - 1; i++) {
+        for (int j = 1; j < nc - 1; j++) {
+            int pos = i * nc + j;
+            int cur = px[pos];
+
+            //neighbors
+            int up = px[(i - 1) * nc + j];
+            int esq = px[i * nc + j - 1];
+
+            if (cur != 0) {
+                px[pos] = (up + 1) < (esq + 1) ? (up + 1) : (esq + 1); // Calcular a distância mínima
+            }
+        }
+    }
+
+    for (int i = nr - 2; i > 0; i--) {
+        for (int j = nc - 2; j > 0; j--) {
+            int pos = i * nc + j;
+            int cur = px[pos];
+
+            //neighbors
+            int up = px[(i + 1) * nc + j];
+            int esq = px[i * nc + j + 1];
+
+            if (cur != 0) {
+                px[pos] = min_of_3(up+1, esq+1, cur); // Atualizar com a distância mínima
+                if (max_distance < px[pos])
+                    max_distance = px[pos]; // Atualizar a distância máxima encontrada
+            }
+        }
+    }
+    return max_distance;
+}
+
 void label(image In)
 {
     int nr = In->nr;
     int nc = In->nc;
-    int *px = In->px;
-    int numLabel = 0;
+    int *p = In->px;
+
+    int label = 0;
     int parent[1000];
+
     for (int i = 0; i < 1000; i++)
         parent[i] = i;
     for (int i = 1; i < nr; i++)
         for (int j = 1; j < nc; j++)
         {
-            int p = px[i * nc + j];
-            int r = px[(i - 1) * nc + j];
-            int t = px[i * nc + j - 1];
-            if (p != 0)
+            int pos = i * nc + j;
+
+            int cur = p[pos]; // current pixel
+            int up = p[(i - 1) * nc + j]; // up neighbor
+            int left = p[pos - 1]; // left neighbor
+
+            if (cur != 0)
             {
-                if (r == 0 && t == 0)
-                    px[i * nc + j] = ++numLabel;
-                if (r != 0 && t == 0)
-                    px[i * nc + j] = r;
-                if (r == 0 && t != 0)
-                    px[i * nc + j] = t;
-                if (r != 0 && t != 0 && t == r)
-                    px[i * nc + j] = r;
-                if (r != 0 && t != 0 && t != r)
-                {
-                    px[i * nc + j] = t;
-                    Union(parent, r, t);
+                if (up == 0 && left == 0) p[pos] = ++label;
+                if (up != 0 && left == 0) p[pos] = up;
+                if (up == 0 && left != 0) p[pos] = left;
+                if (up != 0 && left != 0 && left == up) p[pos] = up;
+                if (up != 0 && left != 0 && left != up){
+                    p[pos] = left;
+                    Union(parent, up, left);
                 }
             }
         }
+        
     for (int i = 0; i < nr * nc; i++)
-        In->px[i] = find(parent, In->px[i]);
-    In->ml = numLabel;
+        p[i] = find(parent, p[i]);
+    In->ml = countDifferentLabels(In, parent);
 }
-
-
 
 void msg(char *s)
 {
@@ -114,24 +204,25 @@ int main(int argc, char *argv[])
     //-- read image
     In = img_get(nameIn, GRAY);
 
-    //-- transformation
-    Out = neg_pgm(In);
-    Out = intensity(Out);
+/*-------------------------------------------------------------------------
+ * Image transformations
+ *-------------------------------------------------------------------------*/
+    Out = neg_pgm(In); // -- image negativity
+    Out = intensity(Out); // -- image thresholding
 
+    img_put(Out, nameOut, BW); //-- save image
+    label(Out);  // -- image labeling
 
-    // Out = img_get(nameOut, BW);
-    //label(Out);
+    printf("#componentes = %i\n", Out->ml); // -- show number of components in terminal
 
-    //-- save image
-    img_put(Out, nameOut, BW);
-
-    // -- show number of components in terminal
-    printf("#componentes = %i\n", Out->ml);
-
-    //-- show image
+/*-------------------------------------------------------------------------
+ * Showing image after transformations
+ *-------------------------------------------------------------------------*/
     sprintf(cmd, "%s %s &", VIEW, nameOut);
     puts(cmd);
     system(cmd);
+
+    // -- free images
     img_free(In);
     img_free(Out);
     return 0;
