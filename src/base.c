@@ -43,7 +43,7 @@ image intensity(image In){
 
     image Out = img_clone(In);
     for (int i = 0; i < In->ml + 1; i++)
-        T[i] = i < 150 ? 0 : 1;  // limiarização
+        T[i] = i > In->ml/2 ? 0 : 1;  // limiarização
 
     for (int i = 0; i < In->nr * In->nc; i++)
         Out->px[i] = T[In->px[i]];
@@ -140,7 +140,7 @@ int distance(image In) {
     return max_distance;
 }
 
-void label(image In)
+int label(image In)
 {
     int nr = In->nr;
     int nc = In->nc;
@@ -175,7 +175,7 @@ void label(image In)
         
     for (int i = 0; i < nr * nc; i++)
         p[i] = find(parent, p[i]);
-    In->ml = countDifferentLabels(In, parent);
+    return countDifferentLabels(In, parent);
 }
 
 void msg(char *s)
@@ -207,13 +207,16 @@ int main(int argc, char *argv[])
 /*-------------------------------------------------------------------------
  * Image transformations
  *-------------------------------------------------------------------------*/
-    Out = neg_pgm(In); // -- image negativity
-    Out = intensity(Out); // -- image thresholding
+    //Out = neg_pgm(In); // -- image negativity
 
-    img_put(Out, nameOut, BW); //-- save image
-    label(Out);  // -- image labeling
+    Out = intensity(In); // -- image thresholding
+    Out->ml = distance(Out);
+    //int labels = label(Out);
 
-    printf("#componentes = %i\n", Out->ml); // -- show number of components in terminal
+
+    img_put(Out, nameOut, GRAY); //-- save image
+
+    //printf("#componentes = %i\n", labels); // -- show number of components in terminal
 
 /*-------------------------------------------------------------------------
  * Showing image after transformations
