@@ -11,8 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <math.h>
-#include <limits.h>
+
+#define bool _Bool
 
 #if defined(_WIN32) || defined(__WIN64__) || defined(__CYGWIN__)
 #include "..\\utils\\imagelib.h"
@@ -20,30 +20,17 @@
 #include "../utils/imagelib.h"
 #endif
 
-#define INT_MAX __INT_MAX__
-#define min(a, b) ((a) < (b) ? (a) : (b))
 
-
-int min_of_3(int x, int y, int z) {
-    if (x < y && x < z) return x;
-    if (y < z) return y;
-
-    return z;
-}
-
-int min2(int a, int b) {
-    if (a < b){
-        return a;
-    }
-    return b;
-}
-
-image intensity(image In){
+/* apply threshold in image
+* @param In input image
+* @return thresholded image
+*/
+image first_threshold(image In){
     float T[In->ml + 1];
 
     image Out = img_clone(In);
     for (int i = 0; i < In->ml + 1; i++)
-        T[i] = i < 150 ? 0 : 1;  // limiarização
+        T[i] = i > 101 ? 0 : 1;  // limiarização
 
     for (int i = 0; i < In->nr * In->nc; i++)
         Out->px[i] = T[In->px[i]];
@@ -51,12 +38,63 @@ image intensity(image In){
     return Out;
 }
 
-image neg_pgm(image In)
-{
+image second_threshold(image In){
+    float T[In->ml + 1];
+
     image Out = img_clone(In);
+    for (int i = 0; i < In->ml + 1; i++)
+        T[i] = i > 5 ? 1 : 0;  // limiarização
+
     for (int i = 0; i < In->nr * In->nc; i++)
-        Out->px[i] = In->ml - In->px[i];
+        Out->px[i] = T[In->px[i]];
+    
     return Out;
+}
+
+int min(int a, int b) {
+    if (a < b) return a;
+    return b;
+}
+
+void distance(image In) {
+    int nr = In->nr;
+    int nc = In->nc;
+    int *px = In->px;
+    int max_distance = 0;
+
+    for (int i = 1; i < nr - 1; i++) {
+        for (int j = 1; j < nc - 1; j++) {
+            int pos = i * nc + j;
+            int cur = px[pos];
+
+            //neighbors
+            int up = px[(i - 1) * nc + j];
+            int esq = px[i * nc + j - 1];
+
+            if (cur != 0) {
+                px[pos] = min(up + 1, esq + 1); // Calcular a distância mínima
+            }
+        }
+    }
+
+    for (int i = nr - 2; i > 0; i--) {
+        for (int j = nc - 2; j > 0; j--) {
+            int pos = i * nc + j;
+            int cur = px[pos];
+
+            //neighbors
+            int up = px[(i + 1) * nc + j];
+            int esq = px[i * nc + j + 1];
+
+            if (cur != 0) {
+                int min_ = min(up + 1, esq + 1);
+                px[pos] = (cur < min_) ? cur : min_; // Atualizar com a distância mínima
+                if (max_distance < px[pos])
+                    max_distance = px[pos]; // Atualizar a distância máxima encontrada
+            }
+        }
+    }
+    In->ml = max_distance;
 }
 
 /* find the parent of the group the element belongs to
@@ -82,17 +120,16 @@ void Union(int parent[], int i, int j)
     parent[y] = x;
 }
 
-
-int countDifferentLabels(image In, int parent[]) {
+int countDifLabels(image In, int parent[]) {
      int unique = 0;
-     int used[In->nc * In->nr];
+     bool used[1000];
 
-    for(int i = 0; i < In->nc * In->nr; i++)
-        used[i] = 0;
+    for(int i = 0; i < 1000; i++)
+        used[i] = false;
 
     for (int i = 0; i < In->nc * In->nr; i++) {
         int root = find(parent, In->px[i]);
-        if (used[root] == 0) { // not used
+        if (used[root] == 0 && root != 0) { // not used and not a background pixel
             used[root] = true;
             unique++;
         }
@@ -100,47 +137,7 @@ int countDifferentLabels(image In, int parent[]) {
     return unique;
 }
 
-int distance(image In) {
-    int nr = In->nr;
-    int nc = In->nc;
-    int *px = In->px;
-    int max_distance = -1;
-
-    for (int i = 1; i < nr - 1; i++) {
-        for (int j = 1; j < nc - 1; j++) {
-            int pos = i * nc + j;
-            int cur = px[pos];
-
-            //neighbors
-            int up = px[(i - 1) * nc + j];
-            int esq = px[i * nc + j - 1];
-
-            if (cur != 0) {
-                px[pos] = (up + 1) < (esq + 1) ? (up + 1) : (esq + 1); // Calcular a distância mínima
-            }
-        }
-    }
-
-    for (int i = nr - 2; i > 0; i--) {
-        for (int j = nc - 2; j > 0; j--) {
-            int pos = i * nc + j;
-            int cur = px[pos];
-
-            //neighbors
-            int up = px[(i + 1) * nc + j];
-            int esq = px[i * nc + j + 1];
-
-            if (cur != 0) {
-                px[pos] = min_of_3(up+1, esq+1, cur); // Atualizar com a distância mínima
-                if (max_distance < px[pos])
-                    max_distance = px[pos]; // Atualizar a distância máxima encontrada
-            }
-        }
-    }
-    return max_distance;
-}
-
-void label(image In)
+int label(image In)
 {
     int nr = In->nr;
     int nc = In->nc;
@@ -152,8 +149,7 @@ void label(image In)
     for (int i = 0; i < 1000; i++)
         parent[i] = i;
     for (int i = 1; i < nr; i++)
-        for (int j = 1; j < nc; j++)
-        {
+        for (int j = 1; j < nc; j++){
             int pos = i * nc + j;
 
             int cur = p[pos]; // current pixel
@@ -162,7 +158,9 @@ void label(image In)
 
             if (cur != 0)
             {
-                if (up == 0 && left == 0) p[pos] = ++label;
+                if (up == 0 && left == 0) {
+                    p[pos] = ++label;
+                }
                 if (up != 0 && left == 0) p[pos] = up;
                 if (up == 0 && left != 0) p[pos] = left;
                 if (up != 0 && left != 0 && left == up) p[pos] = up;
@@ -173,17 +171,19 @@ void label(image In)
             }
         }
         
-    for (int i = 0; i < nr * nc; i++)
-        p[i] = find(parent, p[i]);
-    In->ml = countDifferentLabels(In, parent);
+    for (int i = 0; i < nr * nc; i++){
+        if(In->px[i] != 0)
+            In->px[i] = find(parent, In->px[i]);
+    }
+
+    In->ml = label;
+    return countDifLabels(In, parent);
 }
 
-void msg(char *s)
-{
-    printf("\nNegative image");
+void msg(){
+    printf("\nBeans Counter -- Marcos Vyctor Fonseca Galupo");
     printf("\n-------------------------------");
-    printf("\nUsage:  %s  image-name[.pgm]\n\n", s);
-    printf("    image-name[.pgm] is image file in pgm format \n\n");
+    printf("\nUsage:  ./contafeijao  image-name[.pgm]\n\n");
     exit(1);
 }
 
@@ -196,33 +196,34 @@ int main(int argc, char *argv[])
     char *p, nameIn[100], nameOut[100], cmd[110];
     image In, Out;
     if (argc < 2)
-        msg(argv[0]);
+        msg();
 
-    //-- define input/output file name
+//  * Define input/output file name
     img_name(argv[1], nameIn, nameOut, GRAY, GRAY);
 
-    //-- read image
+//  * Read image
     In = img_get(nameIn, GRAY);
 
-/*-------------------------------------------------------------------------
- * Image transformations
- *-------------------------------------------------------------------------*/
-    Out = neg_pgm(In); // -- image negativity
-    Out = intensity(Out); // -- image thresholding
 
-    img_put(Out, nameOut, BW); //-- save image
-    label(Out);  // -- image labeling
+//  * Image transformations
+    Out = first_threshold(In);
+    distance(Out);
+    Out = second_threshold(Out);
+    int labels = label(Out);
 
-    printf("#componentes = %i\n", Out->ml); // -- show number of components in terminal
 
-/*-------------------------------------------------------------------------
- * Showing image after transformations
- *-------------------------------------------------------------------------*/
+//  * Saving and showing image
+    img_put(Out, nameOut, GRAY);
+    printf("\n\nImage File Name: %s", argv[1]);
+    printf("\n#componentes= %i\n\n", labels);
+
+
+ // * Showing image after transformations
     sprintf(cmd, "%s %s &", VIEW, nameOut);
     puts(cmd);
     system(cmd);
 
-    // -- free images
+//  * Free images
     img_free(In);
     img_free(Out);
     return 0;
