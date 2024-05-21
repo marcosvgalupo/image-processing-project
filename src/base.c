@@ -38,6 +38,10 @@ image first_threshold(image In){
     return Out;
 }
 
+/* apply threshold in image
+* @param In input image
+* @return thresholded image
+*/
 image second_threshold(image In){
     float T[In->ml + 1];
 
@@ -51,11 +55,20 @@ image second_threshold(image In){
     return Out;
 }
 
+
+/* function to find the minimum between two values
+* @param a number
+* @param b number
+* @return minimum between a and b
+*/
 int min(int a, int b) {
     if (a < b) return a;
     return b;
 }
 
+/* calculate distance according to pixel neighbors
+ * @param In input image
+*/
 void distance(image In) {
     int nr = In->nr;
     int nc = In->nc;
@@ -120,6 +133,11 @@ void Union(int parent[], int i, int j)
     parent[y] = x;
 }
 
+/* aux function to label count the different labels (number of connected components)
+ * @param In input image
+ * @param parent array of parents (manage the relations between the pixels)
+ * @return number of connected components
+*/
 int countDifLabels(image In, int parent[]) {
      int unique = 0;
      bool used[1000];
@@ -137,8 +155,11 @@ int countDifLabels(image In, int parent[]) {
     return unique;
 }
 
-int label(image In)
-{
+/* labels the image in order to find the connected components
+* @param In input image
+* @return 
+*/
+int label(image In) {
     int nr = In->nr;
     int nc = In->nc;
     int *p = In->px;

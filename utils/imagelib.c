@@ -63,13 +63,13 @@ void img_name(char *name, char *in, char *out, int tpIn, int tpOut)
  *-------------------------------------------------------------------------*/
 void img_info(char *name, image img)
 {
-    printf("\nImage Informations:");
-    printf("\n--------------------------\n");
-    printf("Image file name.............: %s \n", name);
-    printf("Image type..................: P%d\n", img->tp);
-    printf("Number of rows..............: %d \n", img->nr);
-    printf("Number of columns...........: %d \n", img->nc);
-    printf("Max intensity level.........: %d \n\n", img->ml);
+    //printf("\nImage Informations:");
+    //printf("\n--------------------------\n");
+    printf("\nImage file name: %s \n", name);
+    //printf("Image type..................: P%d\n", img->tp);
+    //printf("Number of rows..............: %d \n", img->nr);
+    //printf("Number of columns...........: %d \n", img->nc);
+    //printf("Max intensity level.........: %d \n\n", img->ml);
 }
 
 /*-------------------------------------------------------------------------
@@ -135,7 +135,7 @@ image img_get(char *name, int tp)
             img->px[i] = (r << 16) + (g << 8) + b;
         }
     fclose(fimg);
-    img_info(name, img);
+    //img_info(name, img);
     return img;
 }
 
