@@ -4,7 +4,7 @@ CCFLAGS=-g
 LDFLAGS=-lm 
 SOURCES=$(wildcard *.c)
 OBJECTS=$(SOURCES:.c=.o)
-TARGET=main
+TARGET=contafeijao
 
 ifeq ($(OS), Windows_NT)
    LIB_DIR = ..\\utils
