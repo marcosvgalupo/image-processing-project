@@ -1,26 +1,24 @@
-# Código Base para processamento de imagem em C
-
-## Pastas
-1. **codigoBase** - contém um exemplo simples para calcular o negativo de uma imagem em formato pgm-ascii.
-2. **utils** - contém a lib para ler e gravar imagens em formato pgm-ascii
+## Directories
+1. **src** - contains the main file base.c
+2. **utils** - contains the imagelib library for reading and writing images in pgm-ascii format
 
 ## Instalação
-1. Para o ambiente linux não é necessário instalar nenhum software adicional
-2. Para windows:
+1. For linux não isn't necessary install any additional software
+2. For windows:
    * Instalar o visualizador de imagens pgm-ascii [IrfanView](https://www.irfanview.com/64bit.htm);
-   * Setar caminho para o visualizador
-     - Sistema(Painel de Controle) -> Configurações Avançadas do Sistema -> Variáveis de Ambiente -> PATH (acrescentar o caminho "c:\Program Files\IrfanView")
+   * And do this:
+     - System(Control panel) -> Advanced System Settings -> Environment variables -> PATH (add the path "c:\Program Files\IrfanView")
 
-## Compilar e Executar
-1. Compilar a imagelib:
+## Compile and Run
+1. Compile imagelib:
 ```
 $ cd utils
 $ make
 ```
 
-2. Compilar e executar o exemplo
+2. Compile and run the example
 ```
 $ cd codigoBase
 $ make
-$ main img
+$ main imgs/<image_name>.pgm
 ```
