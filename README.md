@@ -20,5 +20,5 @@ $ make
 ```
 $ cd codigoBase
 $ make
-$ main imgs/<image_name>.pgm
+$ main testes/<image_name>.pgm
 ```
